@@ -1,0 +1,88 @@
+cat <<EOF > /var/jenkins_home/casc_configs/jenkins.yaml
+jenkins:
+  systemMessage: "Jenkins configured with Amazon EC2 cloud"
+  clouds:
+  - amazonEC2:
+      name: "aws-cloud"
+      region: "eu-north-1"
+      useInstanceProfileForCredentials: false
+      credentialsId: "aws-credentials"
+      instanceCapStr: "5"
+      templates:
+      - ami: "ami-016038ae9cc8d9f51"
+        description: "Jenkins AWS EC2 Agent"
+        labelString: "aws-agent"
+        type: "T3Micro"
+        remoteFS: "/home/ec2-user"
+        remoteAdmin: "ec2-user"
+        mode: "EXCLUSIVE"
+        numExecutors: 1
+        amiType:
+          unixData:
+            sshPort: "22"
+        hostKeyVerificationStrategy: "OFF"
+        initScript: |
+          #!/bin/bash
+
+          # Update package lists
+          sudo yum update -y || sudo apt update -y
+
+          # Install Java 17 (Amazon Linux & Ubuntu)
+          if [ -f /etc/os-release ]; then
+              . /etc/os-release
+              if [[ "$ID" == "amzn" ]]; then
+                  sudo amazon-linux-extras enable corretto17
+                  sudo yum install -y java-17-amazon-corretto
+              else
+                  sudo apt install -y openjdk-17-jdk
+              fi
+          fi
+
+          # Verify Java installation
+          java -version || echo "Java installation failed!"
+
+          # Install Docker (Amazon Linux & Ubuntu)
+          if [[ "$ID" == "amzn" ]]; then
+              sudo amazon-linux-extras enable docker
+              sudo yum install -y docker
+          else
+              sudo apt install -y docker.io
+          fi
+
+          # Start & enable Docker
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -aG docker ec2-user
+
+          # Verify Docker installation
+          docker --version || echo "Docker installation failed!"
+
+          echo "Init script completed successfully."
+
+
+
+        deleteRootOnTermination: true
+        useEphemeralDevices: false
+        associatePublicIp: true
+        monitoring: false
+        t2Unlimited: false
+        connectionStrategy: "PRIVATE_IP"
+        subnetId: "subnet-0edf7cb7c51a6df0c"
+        securityGroups: "allow-all"
+        idleTerminationMinutes: "10"
+EOF
+
+# then run:
+# docker restart jenkins
+
+
+# after its up, go to the cloud and check that it created it.
+# got to the ec2 key and create the credentials key pem.
+# enable connect with ssh
+
+
+
+# create a job.
+
+# click github project and add the url of the repo
+# in trigger section checkmark "GitHub hook trigger for GITScm polling"
